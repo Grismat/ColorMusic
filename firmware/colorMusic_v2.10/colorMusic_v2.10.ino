@@ -219,6 +219,12 @@ DEFINE_GRADIENT_PALETTE(soundlevel_gp) {
   255,  255,  0,    0   // red
 };
 CRGBPalette32 myPal = soundlevel_gp;
+CRGBPalette16 gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::Yellow, CRGB::White);
+/*if (FIRE_PALETTE == 0) gPal = HeatColors_p;
+  else if (FIRE_PALETTE == 1) gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::Yellow, CRGB::White);
+  else if (FIRE_PALETTE == 2) gPal = CRGBPalette16( CRGB::Black, CRGB::Blue, CRGB::Aqua,  CRGB::White);
+  else if (FIRE_PALETTE == 3) gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::White);
+*/
 
 int Rlenght, Llenght;
 float RsoundLevel, RsoundLevel_f;
@@ -228,7 +234,7 @@ float averageLevel = 50;
 int maxLevel = 100;
 int MAX_CH = NUM_LEDS / 2;
 int hue;
-unsigned long main_timer, hue_timer, strobe_timer, running_timer, color_timer, rainbow_timer, eeprom_timer;
+unsigned long main_timer, hue_timer, strobe_timer, running_timer, color_timer, rainbow_timer, eeprom_timer, led_timer;
 float averK = 0.006;
 byte count;
 float index = (float)255 / MAX_CH;   // коэффициент перевода для палитры
@@ -249,9 +255,20 @@ float freq_max_f, rainbow_steps;
 int freq_f[32];
 int this_color;
 boolean running_flag[3], eeprom_flag;
+boolean error_led_flag = false;
 
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+
+//----ОГОНЬ----
+#define COOLING 55
+// SPARKING: What chance (out of 255) is there that a new spark will be lit?
+// Higher chance = more roaring fire.  Lower chance = more flickery fire.
+// Default 120, suggested range 50-200.
+int SPARKING = 120;
+int FIRE_PALETTE = 1;
+int LAST_FIRE_PALETTE = FIRE_PALETTE;
+bool gReverseDirection = false;
 // ------------------------------ ДЛЯ РАЗРАБОТЧИКОВ --------------------------------
 
 void setup() {
@@ -345,6 +362,7 @@ void loop() {
 #if REMOTE_TYPE != 0
   remoteTick();     // опрос ИК пульта
 #endif
+  errorLedTick();
   mainLoop();       // главный цикл обработки и отрисовки
   eepromTick();     // проверка не пора ли сохранить настройки
 }
@@ -687,11 +705,11 @@ void animation() {
             else leds[0] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
             break;
           case 2:
-            if (running_flag[1]) leds[NUM_LEDS / 2] = CHSV(MID_COLOR, 255, thisBright[1]);
+            if (running_flag[1]) leds[0] = CHSV(MID_COLOR, 255, thisBright[1]);
             else leds[0] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
             break;
           case 3:
-            if (running_flag[0]) leds[NUM_LEDS / 2] = CHSV(LOW_COLOR, 255, thisBright[0]);
+            if (running_flag[0]) leds[0] = CHSV(LOW_COLOR, 255, thisBright[0]);
             else leds[0] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
             break;
         }
@@ -717,14 +735,24 @@ void animation() {
         }
       }
       else {
-        byte HUEindex = HUE_START;
+        /*byte HUEindex = HUE_START;
         for (int i = 0; i < NUM_LEDS; i++) {
           byte this_bright = map(freq_f[(int)floor((NUM_LEDS - i) / freq_to_stripe)], 0, freq_max_f, 0, 255);
           this_bright = constrain(this_bright, 0, 255);
           leds[NUM_LEDS - i - 1] = CHSV(HUEindex, 255, this_bright);
           HUEindex += HUE_STEP;
           if (HUEindex > 255) HUEindex = 0;
+        }*/
+        if(FIRE_PALETTE != LAST_FIRE_PALETTE){
+          if (FIRE_PALETTE == 0) gPal = HeatColors_p;
+          else if (FIRE_PALETTE == 1) gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::Yellow, CRGB::White);
+          else if (FIRE_PALETTE == 2) gPal = CRGBPalette16( CRGB::Black, CRGB::Blue, CRGB::Aqua,  CRGB::White);
+          else if (FIRE_PALETTE == 3) gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::White);
+          
+          LAST_FIRE_PALETTE = FIRE_PALETTE;
         }
+        
+        fire();
       }
       break;
   }
@@ -800,6 +828,7 @@ void remoteTick() {
   if (ir_flag) { // если данные пришли
     eeprom_timer = millis();
     eeprom_flag = true;
+    Serial.println("Data recieved");
     switch (IRdata) {
       // режимы
       case BUTT_1: this_mode = 0;
@@ -863,7 +892,9 @@ void remoteTick() {
               break;
             case 7: MAX_COEF_FREQ = smartIncrFloat(MAX_COEF_FREQ, 0.1, 0.0, 10);
               break;
-            case 8: HUE_START = smartIncr(HUE_START, 10, 0, 255);
+            case 8:
+              if (NUM_LEDS != 28) HUE_START = smartIncr(HUE_START, 10, 0, 255);
+              else FIRE_PALETTE = smartIncr(FIRE_PALETTE, 1, 0, 3);
               break;
           }
         }
@@ -896,7 +927,9 @@ void remoteTick() {
               break;
             case 7: MAX_COEF_FREQ = smartIncrFloat(MAX_COEF_FREQ, -0.1, 0.0, 10);
               break;
-            case 8: HUE_START = smartIncr(HUE_START, -10, 0, 255);
+            case 8: 
+              if (NUM_LEDS != 28) HUE_START = smartIncr(HUE_START, -10, 0, 255);
+              else FIRE_PALETTE = smartIncr(FIRE_PALETTE, -1, 0, 3);
               break;
           }
         }
@@ -929,7 +962,9 @@ void remoteTick() {
               break;
             case 7: RUNNING_SPEED = smartIncr(RUNNING_SPEED, -10, 1, 255);
               break;
-            case 8: HUE_STEP = smartIncr(HUE_STEP, -1, 1, 255);
+            case 8:
+              if (NUM_LEDS != 28) HUE_STEP = smartIncr(HUE_STEP, -1, 1, 255);
+              else SPARKING = smartIncr(SPARKING, -20, 50, 200);
               break;
           }
         }
@@ -962,12 +997,19 @@ void remoteTick() {
               break;
             case 7: RUNNING_SPEED = smartIncr(RUNNING_SPEED, 10, 1, 255);
               break;
-            case 8: HUE_STEP = smartIncr(HUE_STEP, 1, 1, 255);
+            case 8:
+              if (NUM_LEDS != 28) HUE_STEP = smartIncr(HUE_STEP, 1, 1, 255);
+              else SPARKING = smartIncr(SPARKING, 20, 50, 200);
               break;
           }
         }
         break;
-      default: eeprom_flag = false;   // если не распознали кнопку, не обновляем настройки!
+      default:
+        Serial.println("Default branch");
+        eeprom_flag = false;   // если не распознали кнопку, не обновляем настройки!
+        error_led_flag = true;
+        digitalWrite(MLED_PIN, HIGH ^ settings_mode);
+        led_timer = millis();
         break;
     }
     ir_flag = false;
@@ -1086,4 +1128,59 @@ void eepromTick() {
       eeprom_timer = millis();
       updateEEPROM();
     }
+}
+
+void errorLedTick(){
+  if(error_led_flag){
+    if(millis() - led_timer > 200){
+      error_led_flag = false;
+      digitalWrite(MLED_PIN, LOW ^ settings_mode);
+    }
+  }
+}
+
+// ****************************** ОГОНЬ ******************************
+void fire() {
+  random16_add_entropy( random());
+  Fire2012WithPalette(); // run simulation frame, using palette colors
+}
+
+void Fire2012WithPalette()
+{
+  // Array of temperature readings at each simulation cell
+  //static byte heat[NUM_LEDS];
+  static byte* heat = new byte[NUM_LEDS];
+
+  // Step 1.  Cool down every cell a little
+  for ( int i = 0; i < NUM_LEDS; i++) {
+    heat[i] = qsub8( heat[i],  random8(0, ((COOLING * 10) / NUM_LEDS) + 2));
+  }
+
+  // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+  for ( int k = NUM_LEDS - 1; k >= 2; k--) {
+    heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
+  }
+
+  // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
+  if ( random8() < SPARKING ) {
+    int y = random8(7);
+    heat[y] = qadd8( heat[y], random8(160, 255) );
+  }
+
+  // Step 4.  Map from heat cells to LED colors
+  for ( int j = 0; j < NUM_LEDS; j++) {
+    // Scale the heat value from 0-255 down to 0-240
+    // for best results with color palettes.
+    byte colorindex = scale8( heat[j], 240);
+    CRGB color = ColorFromPalette( gPal, colorindex);
+    int pixelnumber;
+    if ( gReverseDirection ) {
+      pixelnumber = (NUM_LEDS - 1) - j;
+    } else {
+      pixelnumber = j;
+    }
+    leds[pixelnumber] = color;
+  }
+  
+  delete[] heat;
 }
