@@ -19,7 +19,7 @@
 // ***************************** НАСТРОЙКИ *****************************
 
 // ----- настройка ИК пульта
-#define REMOTE_TYPE 1       // 0 - без пульта, 1 - пульт от WAVGAT, 2 - пульт от KEYES, 3 - кастомный пульт
+#define REMOTE_TYPE 3       // 0 - без пульта, 1 - пульт от WAVGAT, 2 - пульт от KEYES, 3 - кастомный пульт
 // система может работать С ЛЮБЫМ ИК ПУЛЬТОМ (практически). Коды для своего пульта можно задать начиная со строки 160 в прошивке. Коды пультов определяются скетчем IRtest_2.0, читай инструкцию
 
 // ----- настройки параметров
@@ -29,8 +29,8 @@
 #define SETTINGS_LOG 0      // вывод всех настроек из EEPROM в порт при запуске
 
 // ----- настройки ленты
-#define NUM_LEDS 60        // количество светодиодов (данная версия поддерживает до 410 штук)
-#define CURRENT_LIMIT 3000  // лимит по току в МИЛЛИАМПЕРАХ, автоматически управляет яркостью (пожалей свой блок питания!) 0 - выключить лимит
+int NUM_LEDS = 60;          // количество светодиодов (данная версия поддерживает до 410 штук)
+#define CURRENT_LIMIT 1900  // лимит по току в МИЛЛИАМПЕРАХ, автоматически управляет яркостью (пожалей свой блок питания!) 0 - выключить лимит
 byte BRIGHTNESS = 200;      // яркость по умолчанию (0 - 255)
 
 // ----- пины подключения
@@ -38,6 +38,8 @@ byte BRIGHTNESS = 200;      // яркость по умолчанию (0 - 255)
 #define SOUND_L A1         // аналоговый пин вход аудио, левый канал
 #define SOUND_R_FREQ A3    // аналоговый пин вход аудио для режима с частотами (через кондер)
 #define BTN_PIN 3          // кнопка переключения режимов (PIN --- КНОПКА --- GND)
+#define MODE_84_PIN 5
+#define MODE_56_PIN 4
 
 #if defined(__AVR_ATmega32U4__) // Пины для Arduino Pro Micro (смотри схему для Pro Micro на странице проекта!!!)
 #define MLED_PIN 17             // пин светодиода режимов на ProMicro, т.к. обычный не выведен.
@@ -62,7 +64,7 @@ float RAINBOW_STEP = 5.00;         // шаг изменения цвета ра�
 // ----- сигнал
 #define MONO 1                    // 1 - только один канал (ПРАВЫЙ!!!!! SOUND_R!!!!!), 0 - два канала
 #define EXP 1.4                   // степень усиления сигнала (для более "резкой" работы) (по умолчанию 1.4)
-#define POTENT 0                  // 1 - используем потенциометр, 0 - используется внутренний источник опорного напряжения 1.1 В
+#define POTENT 1                  // 1 - используем потенциометр, 0 - используется внутренний источник опорного напряжения 1.1 В
 byte EMPTY_BRIGHT = 30;           // яркость "не горящих" светодиодов (0 - 255)
 #define EMPTY_COLOR HUE_PURPLE    // цвет "не горящих" светодиодов. Будет чёрный, если яркость 0
 
@@ -164,30 +166,30 @@ byte HUE_STEP = 5;
 
 // ----- КНОПКИ СВОЕГО ПУЛЬТА -----
 #if REMOTE_TYPE == 3
-#define BUTT_UP     0xE51CA6AD
-#define BUTT_DOWN   0xD22353AD
-#define BUTT_LEFT   0x517068AD
-#define BUTT_RIGHT  0xAC2A56AD
-#define BUTT_OK     0x1B92DDAD
-#define BUTT_1      0x68E456AD
-#define BUTT_2      0xF08A26AD
-#define BUTT_3      0x151CD6AD
-#define BUTT_4      0x18319BAD
-#define BUTT_5      0xF39EEBAD
-#define BUTT_6      0x4AABDFAD
-#define BUTT_7      0xE25410AD
-#define BUTT_8      0x297C76AD
-#define BUTT_9      0x14CE54AD
-#define BUTT_0      0xC089F6AD
-#define BUTT_STAR   0xAF3F1BAD  // *
-#define BUTT_HASH   0x38379AD   // #
+#define BUTT_UP     0x5AC3A6AD
+#define BUTT_DOWN   0xEB5B1FAD
+#define BUTT_LEFT   0x57AEE1AD
+#define BUTT_RIGHT  0xEE6FE4AD
+#define BUTT_OK     0x9D70FAAD
+#define BUTT_1      0xB89523AD
+#define BUTT_2      0xCE968B39
+#define BUTT_3      0x4C4161AD  
+#define BUTT_4      0x492C9CAD
+#define BUTT_5      0xD6FBF6AD
+#define BUTT_6      0xD3E731AD
+#define BUTT_7      0x6AA834AD
+#define BUTT_8      0x67936FAD
+#define BUTT_9      0xCD981AD
+#define BUTT_0      0x9C4BCAD
+#define BUTT_STAR   0x130294AD  // *
+#define BUTT_HASH   0x9A2B86AD   // #
 #endif
 
 
 // ------------------------------ ДЛЯ РАЗРАБОТЧИКОВ --------------------------------
 #define MODE_AMOUNT 9      // количество режимов
 
-#define STRIPE NUM_LEDS / 5
+int STRIPE = NUM_LEDS / 5;
 float freq_to_stripe = NUM_LEDS / 40; // /2 так как симметрия, и /20 так как 20 частот
 
 #define FHT_N 64         // ширина спектра х2
@@ -198,7 +200,8 @@ float freq_to_stripe = NUM_LEDS / 40; // /2 так как симметрия, и
 
 #define FASTLED_ALLOW_INTERRUPTS 1
 #include "FastLED.h"
-CRGB leds[NUM_LEDS];
+//CRGB leds[NUM_LEDS];
+CRGB* leds = new CRGB[NUM_LEDS];
 
 #include "GyverButton.h"
 GButton butt1(BTN_PIN);
@@ -253,10 +256,7 @@ boolean running_flag[3], eeprom_flag;
 
 void setup() {
   Serial.begin(9600);
-  FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
-  if (CURRENT_LIMIT > 0) FastLED.setMaxPowerInVoltsAndMilliamps(5, CURRENT_LIMIT);
-  FastLED.setBrightness(BRIGHTNESS);
-
+  
 #if defined(__AVR_ATmega32U4__)   //Выключение светодиодов на Pro Micro
   TXLED1;                           //на ProMicro выключим и TXLED
   delay (1000);                     //При питании по usb от компьютера нужна задержка перед выключением RXLED. Если питать от БП, то можно убрать эту строку.
@@ -266,6 +266,11 @@ void setup() {
 
   pinMode(POT_GND, OUTPUT);
   digitalWrite(POT_GND, LOW);
+  
+  pinMode(MODE_84_PIN, INPUT_PULLUP); //режимы кол-ва диодов
+  pinMode(MODE_56_PIN, INPUT_PULLUP); 
+  modeTick();                         // обработка режима кол-ва диодов
+
   butt1.setTimeout(900);
 
   IRLremote.begin(IR_PIN);
@@ -500,21 +505,34 @@ void animation() {
   switch (this_mode) {
     case 0:
       count = 0;
-      for (int i = (MAX_CH - 1); i > ((MAX_CH - 1) - Rlenght); i--) {
-        leds[i] = ColorFromPalette(myPal, (count * index));   // заливка по палитре " от зелёного к красному"
-        count++;
+      if (NUM_LEDS != 28){
+        for (int i = (MAX_CH - 1); i > ((MAX_CH - 1) - Rlenght); i--) {
+          leds[i] = ColorFromPalette(myPal, (count * index));   // заливка по палитре " от зелёного к красному"
+          count++;
+        }
+        count = 0;
+        for (int i = (MAX_CH); i < (MAX_CH + Llenght); i++ ) {
+          leds[i] = ColorFromPalette(myPal, (count * index));   // заливка по палитре " от зелёного к красному"
+          count++;
+        }
+        if (EMPTY_BRIGHT > 0) {
+          CHSV this_dark = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+          for (int i = ((MAX_CH - 1) - Rlenght); i > 0; i--)
+            leds[i] = this_dark;
+          for (int i = MAX_CH + Llenght; i < NUM_LEDS; i++)
+            leds[i] = this_dark;
+        }
       }
-      count = 0;
-      for (int i = (MAX_CH); i < (MAX_CH + Llenght); i++ ) {
-        leds[i] = ColorFromPalette(myPal, (count * index));   // заливка по палитре " от зелёного к красному"
-        count++;
-      }
-      if (EMPTY_BRIGHT > 0) {
-        CHSV this_dark = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
-        for (int i = ((MAX_CH - 1) - Rlenght); i > 0; i--)
-          leds[i] = this_dark;
-        for (int i = MAX_CH + Llenght; i < NUM_LEDS; i++)
-          leds[i] = this_dark;
+      else {
+        for (int i = 0; i < Rlenght; i++){
+          leds[i] = ColorFromPalette(myPal, (count * index));
+          count++;
+        }
+        if (EMPTY_BRIGHT > 0) {
+          CHSV this_dark = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+          for(int i = Rlenght; i < MAX_CH; i++)
+            leds[i] = this_dark;
+        }        
       }
       break;
     case 1:
@@ -523,22 +541,35 @@ void animation() {
         hue = floor((float)hue + RAINBOW_STEP);
       }
       count = 0;
-      for (int i = (MAX_CH - 1); i > ((MAX_CH - 1) - Rlenght); i--) {
-        leds[i] = ColorFromPalette(RainbowColors_p, (count * index) / 2 - hue);  // заливка по палитре радуга
-        count++;
+      if (NUM_LEDS != 28){
+        for (int i = (MAX_CH - 1); i > ((MAX_CH - 1) - Rlenght); i--) {
+          leds[i] = ColorFromPalette(RainbowColors_p, (count * index) / 2 - hue);  // заливка по палитре радуга
+          count++;
+        }
+        count = 0;
+        for (int i = (MAX_CH); i < (MAX_CH + Llenght); i++ ) {
+          leds[i] = ColorFromPalette(RainbowColors_p, (count * index) / 2 - hue); // заливка по палитре радуга
+          count++;
+        }
+        if (EMPTY_BRIGHT > 0) {
+          CHSV this_dark = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+          for (int i = ((MAX_CH - 1) - Rlenght); i > 0; i--)
+            leds[i] = this_dark;
+          for (int i = MAX_CH + Llenght; i < NUM_LEDS; i++)
+            leds[i] = this_dark;
+        }
       }
-      count = 0;
-      for (int i = (MAX_CH); i < (MAX_CH + Llenght); i++ ) {
-        leds[i] = ColorFromPalette(RainbowColors_p, (count * index) / 2 - hue); // заливка по палитре радуга
-        count++;
-      }
-      if (EMPTY_BRIGHT > 0) {
-        CHSV this_dark = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
-        for (int i = ((MAX_CH - 1) - Rlenght); i > 0; i--)
-          leds[i] = this_dark;
-        for (int i = MAX_CH + Llenght; i < NUM_LEDS; i++)
-          leds[i] = this_dark;
-      }
+      else {
+        for (int i = 0; i < Rlenght; i++){
+          leds[i] = ColorFromPalette(RainbowColors_p, (count * index) / 2 - hue);
+          count++;
+        }
+        if (EMPTY_BRIGHT > 0) {
+          CHSV this_dark = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+          for(int i = Rlenght; i < MAX_CH; i++)
+            leds[i] = this_dark;
+        }        
+      }      
       break;
     case 2:
       for (int i = 0; i < NUM_LEDS; i++) {
@@ -613,47 +644,124 @@ void animation() {
       }
       break;
     case 7:
-      switch (freq_strobe_mode) {
-        case 0:
-          if (running_flag[2]) leds[NUM_LEDS / 2] = CHSV(HIGH_COLOR, 255, thisBright[2]);
-          else if (running_flag[1]) leds[NUM_LEDS / 2] = CHSV(MID_COLOR, 255, thisBright[1]);
-          else if (running_flag[0]) leds[NUM_LEDS / 2] = CHSV(LOW_COLOR, 255, thisBright[0]);
-          else leds[NUM_LEDS / 2] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
-          break;
-        case 1:
-          if (running_flag[2]) leds[NUM_LEDS / 2] = CHSV(HIGH_COLOR, 255, thisBright[2]);
-          else leds[NUM_LEDS / 2] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
-          break;
-        case 2:
-          if (running_flag[1]) leds[NUM_LEDS / 2] = CHSV(MID_COLOR, 255, thisBright[1]);
-          else leds[NUM_LEDS / 2] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
-          break;
-        case 3:
-          if (running_flag[0]) leds[NUM_LEDS / 2] = CHSV(LOW_COLOR, 255, thisBright[0]);
-          else leds[NUM_LEDS / 2] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
-          break;
+      if (NUM_LEDS != 28){
+        switch (freq_strobe_mode) {
+          case 0:
+            if (running_flag[2]) leds[NUM_LEDS / 2] = CHSV(HIGH_COLOR, 255, thisBright[2]);
+            else if (running_flag[1]) leds[NUM_LEDS / 2] = CHSV(MID_COLOR, 255, thisBright[1]);
+            else if (running_flag[0]) leds[NUM_LEDS / 2] = CHSV(LOW_COLOR, 255, thisBright[0]);
+            else leds[NUM_LEDS / 2] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+            break;
+          case 1:
+            if (running_flag[2]) leds[NUM_LEDS / 2] = CHSV(HIGH_COLOR, 255, thisBright[2]);
+            else leds[NUM_LEDS / 2] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+            break;
+          case 2:
+            if (running_flag[1]) leds[NUM_LEDS / 2] = CHSV(MID_COLOR, 255, thisBright[1]);
+            else leds[NUM_LEDS / 2] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+            break;
+          case 3:
+            if (running_flag[0]) leds[NUM_LEDS / 2] = CHSV(LOW_COLOR, 255, thisBright[0]);
+            else leds[NUM_LEDS / 2] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+            break;
+        }
+        leds[(NUM_LEDS / 2) - 1] = leds[NUM_LEDS / 2];
+        if (millis() - running_timer > RUNNING_SPEED) {
+          running_timer = millis();
+          for (int i = 0; i < NUM_LEDS / 2 - 1; i++) {
+            leds[i] = leds[i + 1];
+            leds[NUM_LEDS - i - 1] = leds[i];
+          }
+        }
       }
-      leds[(NUM_LEDS / 2) - 1] = leds[NUM_LEDS / 2];
-      if (millis() - running_timer > RUNNING_SPEED) {
-        running_timer = millis();
-        for (int i = 0; i < NUM_LEDS / 2 - 1; i++) {
-          leds[i] = leds[i + 1];
-          leds[NUM_LEDS - i - 1] = leds[i];
+      else {
+        switch (freq_strobe_mode) {
+          case 0:
+            if (running_flag[2]) leds[0] = CHSV(HIGH_COLOR, 255, thisBright[2]);
+            else if (running_flag[1]) leds[0] = CHSV(MID_COLOR, 255, thisBright[1]);
+            else if (running_flag[0]) leds[0] = CHSV(LOW_COLOR, 255, thisBright[0]);
+            else leds[0] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+            break;
+          case 1:
+            if (running_flag[2]) leds[0] = CHSV(HIGH_COLOR, 255, thisBright[2]);
+            else leds[0] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+            break;
+          case 2:
+            if (running_flag[1]) leds[NUM_LEDS / 2] = CHSV(MID_COLOR, 255, thisBright[1]);
+            else leds[0] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+            break;
+          case 3:
+            if (running_flag[0]) leds[NUM_LEDS / 2] = CHSV(LOW_COLOR, 255, thisBright[0]);
+            else leds[0] = CHSV(EMPTY_COLOR, 255, EMPTY_BRIGHT);
+            break;
+        }
+        //leds[(NUM_LEDS / 2) - 1] = leds[NUM_LEDS / 2];
+        if (millis() - running_timer > RUNNING_SPEED) {
+          running_timer = millis();
+          for (int i = NUM_LEDS - 1; i > 0 ; i--) {
+            leds[i] = leds[i - 1];
+          }
         }
       }
       break;
     case 8:
-      byte HUEindex = HUE_START;
-      for (int i = 0; i < NUM_LEDS / 2; i++) {
-        byte this_bright = map(freq_f[(int)floor((NUM_LEDS / 2 - i) / freq_to_stripe)], 0, freq_max_f, 0, 255);
-        this_bright = constrain(this_bright, 0, 255);
-        leds[i] = CHSV(HUEindex, 255, this_bright);
-        leds[NUM_LEDS - i - 1] = leds[i];
-        HUEindex += HUE_STEP;
-        if (HUEindex > 255) HUEindex = 0;
+      if (NUM_LEDS !=  28){
+        byte HUEindex = HUE_START;
+        for (int i = 0; i < NUM_LEDS / 2; i++) {
+          byte this_bright = map(freq_f[(int)floor((NUM_LEDS / 2 - i) / freq_to_stripe)], 0, freq_max_f, 0, 255);
+          this_bright = constrain(this_bright, 0, 255);
+          leds[i] = CHSV(HUEindex, 255, this_bright);
+          leds[NUM_LEDS - i - 1] = leds[i];
+          HUEindex += HUE_STEP;
+          if (HUEindex > 255) HUEindex = 0;
+        }
+      }
+      else {
+        byte HUEindex = HUE_START;
+        for (int i = 0; i < NUM_LEDS; i++) {
+          byte this_bright = map(freq_f[(int)floor((NUM_LEDS - i) / freq_to_stripe)], 0, freq_max_f, 0, 255);
+          this_bright = constrain(this_bright, 0, 255);
+          leds[NUM_LEDS - i - 1] = CHSV(HUEindex, 255, this_bright);
+          HUEindex += HUE_STEP;
+          if (HUEindex > 255) HUEindex = 0;
+        }
       }
       break;
   }
+}
+
+void modeTick(){
+  boolean changed = true; //вообще по нормальному false, но тут это костыль, чтобы зайти в ветвление; эта штуаа раньше была нужна, сейчвс оставил на память
+
+  if(!digitalRead(MODE_84_PIN) && NUM_LEDS != 84){
+    changed = true;
+    NUM_LEDS = 84;
+  }
+  else if(!digitalRead(MODE_56_PIN) && NUM_LEDS != 56){
+    changed = true;
+    NUM_LEDS = 56;
+  }
+  else if(NUM_LEDS != 28){
+    changed = true;
+    NUM_LEDS = 28;
+  }
+   
+  if(changed){
+    STRIPE = NUM_LEDS / 5;
+    freq_to_stripe = NUM_LEDS / 40;  // /2 так как симметрия, и /20 так как 20 частот ????????
+    MAX_CH = (NUM_LEDS == 28)? (NUM_LEDS):(NUM_LEDS / 2);
+    delete[] leds;
+    leds = new CRGB[NUM_LEDS];
+    index = (float)255 / MAX_CH;
+    
+    delay(3000);
+    FastLED.addLeds<WS2811, LED_PIN, GRB>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
+    if (CURRENT_LIMIT > 0){
+      if (NUM_LEDS != 28) FastLED.setMaxPowerInVoltsAndMilliamps(5, CURRENT_LIMIT);
+      else FastLED.setMaxPowerInVoltsAndMilliamps(5, CURRENT_LIMIT / 3);
+    }
+    FastLED.setBrightness(BRIGHTNESS);
+  }  
 }
 
 void HIGHS() {
